@@ -1,9 +1,15 @@
 import numpy as np
 import os
-
+import cv2
+import torch
 from PIL import Image
-
+from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
+import torchvision.transforms as transforms
+from PIL import Image
+import numpy as np
+import matplotlib.pyplot as plt 
+
 
 EXTENSIONS = ['.jpg', '.png']
 
@@ -45,18 +51,11 @@ class VOC12(Dataset):
             image = load_image(f).convert('RGB')
         with open(image_path(self.labels_root, filename, '.png'), 'rb') as f:
             label = load_image(f).convert('P')
-
-        if self.input_transform is not None:
-            image = self.input_transform(image)
-        if self.target_transform is not None:
-            label = self.target_transform(label)
-
+            
         return image, label
 
     def __len__(self):
         return len(self.filenames)
-
-
 
 
 class cityscapes(Dataset):
@@ -68,15 +67,17 @@ class cityscapes(Dataset):
         self.images_root += subset
         self.labels_root += subset
 
-        print (self.images_root)
-        #self.filenames = [image_basename(f) for f in os.listdir(self.images_root) if is_image(f)]
         self.filenames = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.images_root)) for f in fn if is_image(f)]
         self.filenames.sort()
-
-        #[os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(".")) for f in fn]
-        #self.filenamesGt = [image_basename(f) for f in os.listdir(self.labels_root) if is_image(f)]
-        self.filenamesGt = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.labels_root)) for f in fn if is_label(f)]
+          
+        # self.filenamesGt = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(".")) for f in fn]
+        self.filenamesGt = [image_basename(f) for f in os.listdir(self.labels_root) if is_image(f)]
+        # self.filenamesGt = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.labels_root)) for f in fn if is_label(f)]
         self.filenamesGt.sort()
+        posi2 = 0
+        for f in self.filenamesGt:
+            self.filenamesGt[posi2] = f +".png"
+            posi2 += 1      
 
         self.co_transform = co_transform # ADDED THIS
 
@@ -85,16 +86,23 @@ class cityscapes(Dataset):
         filename = self.filenames[index]
         filenameGt = self.filenamesGt[index]
 
+        width = 320
+        height = 320 
+        dim = (width, height)
+
         with open(image_path_city(self.images_root, filename), 'rb') as f:
             image = load_image(f).convert('RGB')
-        with open(image_path_city(self.labels_root, filenameGt), 'rb') as f:
-            label = load_image(f).convert('P')
+            # Only thing added to the original  
+            image = image.resize(dim)
 
-        if self.co_transform is not None:
-            image, label = self.co_transform(image, label)
+        #  original just keep same as the image and remove line 110 
+        mask = os.path.join(self.labels_root, filenameGt)
+        mask_cv = cv2.imread(mask, cv2.IMREAD_UNCHANGED)[:,:,0]
+        mask_cv_r = cv2.resize(mask_cv, dim, interpolation = cv2.INTER_AREA).astype(int)
 
-        return image, label
+        return np.asarray(image)/255, np.asarray(mask_cv_r)
 
     def __len__(self):
         return len(self.filenames)
+
 

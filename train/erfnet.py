@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
+import numpy as np
 
 class DownsamplerBlock (nn.Module):
     def __init__(self, ninput, noutput):

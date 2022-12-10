@@ -28,8 +28,10 @@ from iouEval import iouEval, getColorEntry
 
 from shutil import copyfile
 
+from torch.nn import CrossEntropyLoss
+
 NUM_CHANNELS = 3
-NUM_CLASSES = 20 #pascal=22, cityscapes=20
+NUM_CLASSES = 2 #pascal=22, cityscapes=20
 
 color_transform = Colorize(NUM_CLASSES)
 image_transform = ToPILImage()
@@ -59,8 +61,9 @@ class MyCoTransform(object):
 
             input = ImageOps.expand(input, border=(transX,transY,0,0), fill=0)
             target = ImageOps.expand(target, border=(transX,transY,0,0), fill=255) #pad label filling with 255
-            input = input.crop((0, 0, input.size[0]-transX, input.size[1]-transY))
-            target = target.crop((0, 0, target.size[0]-transX, target.size[1]-transY))   
+            # target = ImageOps.expand(target, border=(transX,transY,0,0), fill=255)
+            # input = input.crop((0, 0, input.size[0]-transX, input.size[1]-transY))
+            # target = target.crop((0, 0, target.size[0]-transX, target.size[1]-transY))   python main.py --savedir erfnet_training1 --datadir /home/datasets/cityscapes/ --num-epochs 150 --batch-size 6 
 
         input = ToTensor()(input)
         if (self.enc):
@@ -71,7 +74,6 @@ class MyCoTransform(object):
         return input, target
 
 
-class CrossEntropyLoss2d(torch.nn.Module):
 
     def __init__(self, weight=None):
         super().__init__()
@@ -89,6 +91,7 @@ def train(args, model, enc=False):
     #create a loder to run all images and calculate histogram of labels, then create weight array using class balancing
 
     weight = torch.ones(NUM_CLASSES)
+    """
     if (enc):
         weight[0] = 2.3653597831726	
         weight[1] = 4.4237880706787	
@@ -130,21 +133,21 @@ def train(args, model, enc=False):
         weight[17] = 10.405355453491	
         weight[18] = 10.138095855713	
 
-    weight[19] = 0
+    weight[19] = 0"""
 
     assert os.path.exists(args.datadir), "Error: datadir (dataset directory) could not be loaded"
 
-    co_transform = MyCoTransform(enc, augment=True, height=args.height)#1024)
-    co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
-    dataset_train = cityscapes(args.datadir, co_transform, 'train')
-    dataset_val = cityscapes(args.datadir, co_transform_val, 'val')
+    # co_transform = MyCoTransform(enc, augment=True, height=args.height)#1024)
+    # co_transform_val = MyCoTransform(enc, augment=False, height=args.height)#1024)
+    dataset_train = cityscapes(args.datadir, subset='train')
+    dataset_val = cityscapes(args.datadir, subset='val')
 
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
     if args.cuda:
         weight = weight.cuda()
-    criterion = CrossEntropyLoss2d(weight)
+    criterion = CrossEntropyLoss(weight)
     print(type(criterion))
 
     savedir = f'../save/{args.savedir}'
@@ -215,26 +218,23 @@ def train(args, model, enc=False):
         for step, (images, labels) in enumerate(loader):
 
             start_time = time.time()
-            #print (labels.size())
-            #print (np.unique(labels.numpy()))
-            #print("labels: ", np.unique(labels[0].numpy()))
-            #labels = torch.ones(4, 1, 512, 1024).long()
+
             if args.cuda:
                 images = images.cuda()
                 labels = labels.cuda()
 
-            inputs = Variable(images)
-            targets = Variable(labels)
-            outputs = model(inputs, only_encode=enc)
+            inputs = Variable(images).type(torch.float).permute(0,3,1,2)
+            targets = Variable(labels).long()
 
-            #print("targets", np.unique(targets[:, 0].cpu().data.numpy()))
+            outputs = model(inputs, only_encode=False)
 
             optimizer.zero_grad()
-            loss = criterion(outputs, targets[:, 0])
+            loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()
 
-            epoch_loss.append(loss.data[0])
+            # epoch_loss.append(loss.data[0])
+            epoch_loss.append(loss.data)
             time_train.append(time.time() - start_time)
 
             if (doIouTrain):
@@ -289,12 +289,13 @@ def train(args, model, enc=False):
                 images = images.cuda()
                 labels = labels.cuda()
 
-            inputs = Variable(images, volatile=True)    #volatile flag makes it free backward or outputs for eval
-            targets = Variable(labels, volatile=True)
-            outputs = model(inputs, only_encode=enc) 
+            inputs = Variable(images).type(torch.float).permute(0,3,1,2)
+            targets = Variable(labels).long()
+            outputs = model(inputs, only_encode=False) 
 
-            loss = criterion(outputs, targets[:, 0])
-            epoch_loss_val.append(loss.data[0])
+            loss = criterion(outputs, targets)
+            # epoch_loss_val.append(loss.data[0])
+            epoch_loss_val.append(loss.data)
             time_val.append(time.time() - start_time)
 
 
@@ -456,29 +457,31 @@ def main(args):
     """
 
     #train(args, model)
-    if (not args.decoder):
-        print("========== ENCODER TRAINING ===========")
-        model = train(args, model, True) #Train encoder
-    #CAREFUL: for some reason, after training encoder alone, the decoder gets weights=0. 
-    #We must reinit decoder weights or reload network passing only encoder in order to train decoder
-    print("========== DECODER TRAINING ===========")
-    if (not args.state):
-        if args.pretrainedEncoder:
-            print("Loading encoder pretrained in imagenet")
-            from erfnet_imagenet import ERFNet as ERFNet_imagenet
-            pretrainedEnc = torch.nn.DataParallel(ERFNet_imagenet(1000))
-            pretrainedEnc.load_state_dict(torch.load(args.pretrainedEncoder)['state_dict'])
-            pretrainedEnc = next(pretrainedEnc.children()).features.encoder
-            if (not args.cuda):
-                pretrainedEnc = pretrainedEnc.cpu()     #because loaded encoder is probably saved in cuda
-        else:
-            pretrainedEnc = next(model.children()).encoder
-        model = model_file.Net(NUM_CLASSES, encoder=pretrainedEnc)  #Add decoder to encoder
-        if args.cuda:
-            model = torch.nn.DataParallel(model).cuda()
-        #When loading encoder reinitialize weights for decoder because they are set to 0 when training dec
-    model = train(args, model, False)   #Train decoder
-    print("========== TRAINING FINISHED ===========")
+    # if (not args.decoder):
+    #     print("========== ENCODER TRAINING ===========")
+    #     model = train(args, model, True) #Train encoder
+    # #CAREFUL: for some reason, after training encoder alone, the decoder gets weights=0. 
+    # #We must reinit decoder weights or reload network passing only encoder in order to train decoder
+    # print("========== DECODER TRAINING ===========")
+    # if (not args.state):
+    #     if args.pretrainedEncoder:
+    #         print("Loading encoder pretrained in imagenet")
+    #         from erfnet_imagenet import ERFNet as ERFNet_imagenet
+    #         pretrainedEnc = torch.nn.DataParallel(ERFNet_imagenet(1000))
+    #         pretrainedEnc.load_state_dict(torch.load(args.pretrainedEncoder)['state_dict'])
+    #         pretrainedEnc = next(pretrainedEnc.children()).features.encoder
+    #         if (not args.cuda):
+    #             pretrainedEnc = pretrainedEnc.cpu()     #because loaded encoder is probably saved in cuda
+    #     else:
+    #         pretrainedEnc = next(model.children()).encoder
+    #     model = model_file.Net(NUM_CLASSES, encoder=pretrainedEnc)  #Add decoder to encoder
+    #     if args.cuda:
+    #         model = torch.nn.DataParallel(model).cuda()
+    #     #When loading encoder reinitialize weights for decoder because they are set to 0 when training dec
+    # model = train(args, model, False)   #Train decoder
+    # print("========== TRAINING FINISHED ===========")
+
+    model = train(args, model, False)
 
 if __name__ == '__main__':
     parser = ArgumentParser()

@@ -99,7 +99,8 @@ def main(args):
         print ("Error: datadir could not be loaded")
 
 
-    loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset),
+    # loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset),
+    loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes),
         num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
     # For visualizer:
@@ -113,8 +114,14 @@ def main(args):
             images = images.cuda()
             #labels = labels.cuda()
 
-        inputs = Variable(images)
-        #targets = Variable(labels)
+        inputs = Variable(images).type(torch.float).permute(0,3,1,2)
+        targets = Variable(labels).long()
+
+        # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        # inputs, labels = inputs.to(device), labels.to(device)
+        # inputs = inputs.cuda()
+        # labels = labels.cuda()
+
         with torch.no_grad():
             outputs = model(inputs)
 
@@ -122,7 +129,7 @@ def main(args):
         #label_cityscapes = cityscapes_trainIds2labelIds(label.unsqueeze(0))
         label_color = Colorize()(label.unsqueeze(0))
 
-        filenameSave = "./save_color/" + filename[0].split("leftImg8bit/")[1]
+        filenameSave = "./crop_output/" + filename[0].split("leftImg8bit/")[1]
         os.makedirs(os.path.dirname(filenameSave), exist_ok=True)
         #image_transform(label.byte()).save(filenameSave)      
         label_save = ToPILImage()(label_color)           
@@ -142,7 +149,7 @@ if __name__ == '__main__':
     parser.add_argument('--loadDir',default="../trained_models/")
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
     parser.add_argument('--loadModel', default="erfnet.py")
-    parser.add_argument('--subset', default="val")  #can be val, test, train, demoSequence
+    # parser.add_argument('--subset', default="val")  #can be val, test, train, demoSequence
 
     parser.add_argument('--datadir', default=os.getenv("HOME") + "/datasets/cityscapes/")
     parser.add_argument('--num-workers', type=int, default=4)
