@@ -29,6 +29,7 @@ from iouEval import iouEval, getColorEntry
 from shutil import copyfile
 
 from torch.nn import CrossEntropyLoss
+# from sklearn.preprocessing import LabelEncoder
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 2 #pascal=22, cityscapes=20
@@ -145,6 +146,9 @@ def train(args, model, enc=False):
     loader = DataLoader(dataset_train, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=True)
     loader_val = DataLoader(dataset_val, num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
+
+    # le=LabelEncoder()
+
     if args.cuda:
         weight = weight.cuda()
     criterion = CrossEntropyLoss(weight)
@@ -229,6 +233,10 @@ def train(args, model, enc=False):
             outputs = model(inputs, only_encode=False)
 
             optimizer.zero_grad()
+
+            # targets[‘label_encoded’]=le.fit_transform(targets[‘label’])
+
+
             loss = criterion(outputs, targets)
             loss.backward()
             optimizer.step()

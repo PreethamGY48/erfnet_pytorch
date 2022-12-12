@@ -24,7 +24,7 @@ import visdom
 
 
 NUM_CHANNELS = 3
-NUM_CLASSES = 20
+NUM_CLASSES = 2
 
 image_transform = ToPILImage()
 input_transform_cityscapes = Compose([
@@ -109,13 +109,14 @@ def main(args):
     if (args.visualize):
         vis = visdom.Visdom()
 
-    for step, (images, labels, filename, filenameGt) in enumerate(loader):
+    # for step, (images, labels, filename, filenameGt) in enumerate(loader):
+    for step, (images, filename) in enumerate(loader):
         if (not args.cpu):
             images = images.cuda()
             #labels = labels.cuda()
 
         inputs = Variable(images).type(torch.float).permute(0,3,1,2)
-        targets = Variable(labels).long()
+        # targets = Variable(labels).long()            
 
         # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         # inputs, labels = inputs.to(device), labels.to(device)
@@ -127,12 +128,14 @@ def main(args):
 
         label = outputs[0].max(0)[1].byte().cpu().data
         #label_cityscapes = cityscapes_trainIds2labelIds(label.unsqueeze(0))
-        label_color = Colorize()(label.unsqueeze(0))
+        # label_color = Colorize()(label.unsqueeze(0))
+        label_color = 255 * label.unsqueeze(0)
 
         filenameSave = "./crop_output/" + filename[0].split("leftImg8bit/")[1]
         os.makedirs(os.path.dirname(filenameSave), exist_ok=True)
         #image_transform(label.byte()).save(filenameSave)      
-        label_save = ToPILImage()(label_color)           
+        label_save = ToPILImage()(label_color)  
+        # label_save.convert('L')        
         label_save.save(filenameSave) 
 
         if (args.visualize):

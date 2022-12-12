@@ -68,13 +68,13 @@ class VOC12(Dataset):
 class cityscapes(Dataset):
 
     # def __init__(self, root, co_transform=None, subset='train'):
-    def __init__(self, root, co_transform=None, subset = "val"):
+    def __init__(self, root, co_transform=None, subset = "test"):
         self.images_root = os.path.join(root, 'leftImg8bit/')
         self.labels_root = os.path.join(root, 'gtFine/')
         
         # print("self.images_root",type(subset))
-        self.images_root += "val"
-        self.labels_root += "val"
+        self.images_root += "test"
+        self.labels_root += "test"
 
         self.filenames = [os.path.join(dp, f) for dp, dn, fn in os.walk(os.path.expanduser(self.images_root)) for f in fn if is_image(f)]
         self.filenames.sort()
@@ -93,7 +93,8 @@ class cityscapes(Dataset):
 
     def __getitem__(self, index):
         filename = self.filenames[index]
-        filenameGt = self.filenamesGt[index]
+        # filenameGt = self.filenamesGt[index]
+        filenameGt = 0
 
         width = 320
         height = 320 
@@ -105,11 +106,12 @@ class cityscapes(Dataset):
             image = image.resize(dim)
 
         #  original just keep same as the image and remove line 110 
-        mask = os.path.join(self.labels_root, filenameGt)
-        mask_cv = cv2.imread(mask, cv2.IMREAD_UNCHANGED)[:,:,0]
-        mask_cv_r = cv2.resize(mask_cv, dim, interpolation = cv2.INTER_AREA).astype(int)
+        # mask = os.path.join(self.labels_root, filenameGt)
+        # mask_cv = cv2.imread(mask, cv2.IMREAD_UNCHANGED)[:,:,0]
+        # mask_cv_r = cv2.resize(mask_cv, dim, interpolation = cv2.INTER_AREA).astype(int)
 
-        return np.asarray(image)/255, np.asarray(mask_cv_r),filename,filenameGt
+        # return np.asarray(image)/255, np.asarray(mask_cv_r),filename,filenameGt
+        return np.asarray(image)/255,filename
 
     def __len__(self):
         return len(self.filenames)    
