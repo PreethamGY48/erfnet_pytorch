@@ -105,7 +105,7 @@ def main(args):
 
     # For visualizer:
     # must launch in other window "python3.6 -m visdom.server -port 8097"
-    # and access localhost:8097 to see it
+    # and access localhost:8097 to see it.
     if (args.visualize):
         vis = visdom.Visdom()
 
@@ -132,6 +132,7 @@ def main(args):
         label_color = 255 * label.unsqueeze(0)
 
         filenameSave = "./crop_output/" + filename[0].split("leftImg8bit/")[1]
+        # filenameSave = "./gazebo_output/" + filename[0].split("leftImg8bit/")[1]
         os.makedirs(os.path.dirname(filenameSave), exist_ok=True)
         #image_transform(label.byte()).save(filenameSave)      
         label_save = ToPILImage()(label_color)  
@@ -152,6 +153,7 @@ if __name__ == '__main__':
     parser.add_argument('--loadDir',default="../trained_models/")
     parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
     parser.add_argument('--loadModel', default="erfnet.py")
+    # parser.add_argument('--loadModel', default="../trained_models/erfnet_pretrained.pth")
     # parser.add_argument('--subset', default="val")  #can be val, test, train, demoSequence
 
     parser.add_argument('--datadir', default=os.getenv("HOME") + "/datasets/cityscapes/")
