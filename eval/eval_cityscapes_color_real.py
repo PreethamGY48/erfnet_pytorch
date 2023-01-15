@@ -69,12 +69,12 @@ cityscapes_trainIds2labelIds = Compose([
     ToPILImage(),
 ])
 
-def main():
+def main(args):
 
     # modelpath = args.loadDir + args.loadModel
-    modelpath = "/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/trained_models/"
+    modelpath = args.loadModel
     # weightspath = args.loadDir + args.loadWeights
-    weightspath = "/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/save/erfnet_training1/model_best.pth"
+    weightspath = args.loadWeights
 
     print ("Loading model: " + modelpath)
     print ("Loading weights: " + weightspath)
@@ -84,7 +84,7 @@ def main():
     model = ERFNet(NUM_CLASSES)
   
     model = torch.nn.DataParallel(model)
-    if (not 'store_true'):
+    if (not args.cpu):
         model = model.cuda()
 
     #model.load_state_dict(torch.load(args.state))
@@ -103,23 +103,23 @@ def main():
 
     model.eval()
 
-    # if(not os.path.exists(args.datadir)):
-    #     print ("Error: datadir could not be loaded")
+    if(not os.path.exists(args.datadir)):
+        print ("Error: datadir could not be loaded")
 
 
     # loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset),
-    loader = DataLoader(cityscapes('/home/preetham/Project_03_2Sem_data/gazebo_input', input_transform_cityscapes, target_transform_cityscapes),
-        num_workers=4, batch_size=1, shuffle=False)
+    loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes),
+        num_workers=args.num_workers, batch_size=args.batch_size, shuffle=False)
 
     # For visualizer:
     # must launch in other window "python3.6 -m visdom.server -port 8097"
     # and access localhost:8097 to see it.
-    if ( not 'store_true'):
+    if (args.visualize):
         vis = visdom.Visdom()
 
     # for step, (images, labels, filename, filenameGt) in enumerate(loader):
     for step, (images, filename) in enumerate(loader):
-        if ( not 'store_true'):
+        if (not args.cpu):
             images = images.cuda()
             #labels = labels.cuda()
 
@@ -147,9 +147,34 @@ def main():
         # label_save.convert('L')        
         label_save.save(filenameSave) 
 
-        if ( not 'store_true'):
+        if (args.visualize):
             vis.image(label_color.numpy())
         print (step, filenameSave)
 
+    
+
 if __name__ == '__main__':
-    main()    
+    parser = ArgumentParser()
+
+    parser.add_argument('--state')
+
+    # parser.add_argument('--loadDir',default="../trained_models/")
+    parser.add_argument('--loadDir',default="/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/trained_models/")
+    
+    # parser.add_argument('--loadWeights', default="erfnet_pretrained.pth")
+    parser.add_argument('--loadWeights', default="/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/save/erfnet_training1/model_best.pth")
+    
+    parser.add_argument('--loadModel', default="erfnet.py")
+    # parser.add_argument('--loadModel', default="/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/eval/erfnet.py")
+    
+    # parser.add_argument('--loadModel', default="../trained_models/erfnet_pretrained.pth")
+    # parser.add_argument('--subset', default="val")  #can be val, test, train, demoSequence
+
+    # parser.add_argument('--datadir', default=os.getenv("HOME") + "/datasets/cityscapes/")
+    parser.add_argument('--datadir', default='/home/preetham/Project_03_2Sem_data/gazebo_input')
+    parser.add_argument('--num-workers', type=int, default=4)
+    parser.add_argument('--batch-size', type=int, default=1)
+    parser.add_argument('--cpu', action='store_true')
+
+    parser.add_argument('--visualize', action='store_true')
+    main(parser.parse_args())
