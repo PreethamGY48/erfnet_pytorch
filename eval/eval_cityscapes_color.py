@@ -7,27 +7,21 @@ import numpy as np
 import torch
 import os
 import importlib
-
 from PIL import Image
 from argparse import ArgumentParser
-
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision.transforms import Compose, CenterCrop, Normalize, Resize
 from torchvision.transforms import ToTensor, ToPILImage
-
 # from dataset import cityscapes
 # from erfnet import ERFNet
 #  CHANGES FOR THE ROS
 import sys
-
 sys.path.append(os.path.abspath("/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/eval"))
 from dataset import cityscapes
 from erfnet import ERFNet
 from transform import Relabel, ToLabel, Colorize
-
 import visdom
-
 
 NUM_CHANNELS = 3
 NUM_CLASSES = 2
@@ -70,11 +64,10 @@ cityscapes_trainIds2labelIds = Compose([
 ])
 
 def main():
-
     # modelpath = args.loadDir + args.loadModel
-    modelpath = "/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/trained_models/"
+    modelpath = "/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/trained_models/"             # 1 para
     # weightspath = args.loadDir + args.loadWeights
-    weightspath = "/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/save/erfnet_training1/model_best.pth"
+    weightspath = "/home/preetham/project_03_2Sem_code/ERFnet/erfnet_pytorch/save/erfnet_training1/model_best.pth"   # 2 para
 
     print ("Loading model: " + modelpath)
     print ("Loading weights: " + weightspath)
@@ -106,10 +99,10 @@ def main():
     # if(not os.path.exists(args.datadir)):
     #     print ("Error: datadir could not be loaded")
 
-
+# Input Image Folder
     # loader = DataLoader(cityscapes(args.datadir, input_transform_cityscapes, target_transform_cityscapes, subset=args.subset),
-    loader = DataLoader(cityscapes('/home/preetham/Project_03_2Sem_data/gazebo_input', input_transform_cityscapes, target_transform_cityscapes),
-        num_workers=4, batch_size=1, shuffle=False)
+    loader = DataLoader(cityscapes('/home/preetham/Project_03_2Sem_data/crop_traversible', input_transform_cityscapes, target_transform_cityscapes),
+        num_workers=4, batch_size=1, shuffle=False)                                         # 4 Para
 
     # For visualizer:
     # must launch in other window "python3.6 -m visdom.server -port 8097"
@@ -137,10 +130,18 @@ def main():
         label = outputs[0].max(0)[1].byte().cpu().data
         #label_cityscapes = cityscapes_trainIds2labelIds(label.unsqueeze(0))
         # label_color = Colorize()(label.unsqueeze(0))
-        label_color = 255 * label.unsqueeze(0)
+        # label_color = 255 * label.unsqueeze(0)
+        # print(label_color)
+        label_color = torch.where(label==0,255,0).type(torch.uint8)
+        # print(label_color)
+        # import ipdb; ipdb.set_trace()
+        
 
+# Output Image Folder 
         # filenameSave = "./crop_output/" + filename[0].split("leftImg8bit/")[1]
-        filenameSave = "./gazebo_New_output/" + filename[0].split("leftImg8bit/")[1]
+        # filenameSave = "./gazebo_New_output/" + filename[0].split("leftImg8bit/")[1]
+        # filenameSave = "./New_output/" + filename[0].split("leftImg8bit/")[1]
+        filenameSave = "./Final_output/" + filename[0].split("leftImg8bit/")[1]            # Para 5
         os.makedirs(os.path.dirname(filenameSave), exist_ok=True)
         #image_transform(label.byte()).save(filenameSave)      
         label_save = ToPILImage()(label_color)  

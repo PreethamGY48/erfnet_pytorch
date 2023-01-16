@@ -173,9 +173,9 @@ def train(args, model, enc=False):
 
     #TODO: reduce memory in first gpu: https://discuss.pytorch.org/t/multi-gpu-training-memory-usage-in-balance/4163/4        #https://github.com/pytorch/pytorch/issues/1893
 
-    #optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=2e-4)     ## scheduler 1
+    optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=2e-4)     ## scheduler 1
     # optimizer = Adam(model.parameters(), 5e-4, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4)      ## scheduler 2
-    optimizer = Adam(model.parameters(), 0.05, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4)
+    # optimizer = Adam(model.parameters(), 0.05, (0.9, 0.999),  eps=1e-08, weight_decay=1e-4)
 
     start_epoch = 1
     if args.resume:
@@ -274,7 +274,11 @@ def train(args, model, enc=False):
                 print(f'loss: {average:0.4} (epoch: {epoch}, step: {step})', 
                         "// Avg time/img: %.4f s" % (sum(time_train) / len(time_train) / args.batch_size))
 
-            
+# to plot the loss value 
+                plot_loss = np.array(average,step)
+                final_plot = np.append(final_plot,plot_loss)
+                final_plot = final_plot.reshape(-1,2)
+
         average_epoch_loss_train = sum(epoch_loss) / len(epoch_loss)
         
         iouTrain = 0
@@ -337,12 +341,18 @@ def train(args, model, enc=False):
         #scheduler.step(average_epoch_loss_val, epoch)  ## scheduler 1   # update lr if needed
 
         iouVal = 0
+        step = 0
         if (doIouVal):
             iouVal, iou_classes = iouEvalVal.getIoU()
             iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
             print ("EPOCH IoU on VAL set: ", iouStr, "%") 
-           
 
+# To plot the IOU
+            IOU_output = np.array(iouStr,step)
+            IOU_final_plot = np.append(IOU_final_plot,IOU_output)
+            IOU_final_plot = IOU_final_plot.reshape(-1,2)                        
+            step += 1
+            
         # remember best valIoU and save checkpoint
         if iouVal == 0:
             current_acc = -average_epoch_loss_val
