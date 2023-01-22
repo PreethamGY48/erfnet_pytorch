@@ -11,8 +11,6 @@ def main():
     i = 0
     while(value): 
         eval_cityscapes_color.main()
-        # if i == 10:
-        #     value = False
-        # i += 1    
+  
 if __name__ == '__main__':
     main()    
