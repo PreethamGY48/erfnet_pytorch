@@ -68,22 +68,26 @@ class ToLabel:
 class Colorize:
 
     def __init__(self, n=22):
-        #self.cmap = colormap(256)
-        self.cmap = colormap_cityscapes(256)
+    # def __init__(self, n=2):
+        self.cmap = colormap(256)
+        # self.cmap = colormap_cityscapes(2)
         self.cmap[n] = self.cmap[-1]
         self.cmap = torch.from_numpy(self.cmap[:n])
 
     def __call__(self, gray_image):
         size = gray_image.size()
-        #print(size)
+        # print(size)
         color_image = torch.ByteTensor(3, size[1], size[2]).fill_(0)
-        #color_image = torch.ByteTensor(3, size[0], size[1]).fill_(0)
+        # color_image = torch.ByteTensor(1, size[0], size[1]).fill_(0)
+        # print(self.cmap)
+
 
         #for label in range(1, len(self.cmap)):
         for label in range(0, len(self.cmap)):
             mask = gray_image[0] == label
-            #mask = gray_image == label
-
+            # mask = gray_image == label
+            
+            print(color_image.shape)
             color_image[0][mask] = self.cmap[label][0]
             color_image[1][mask] = self.cmap[label][1]
             color_image[2][mask] = self.cmap[label][2]

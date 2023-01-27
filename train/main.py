@@ -25,9 +25,7 @@ from visualize import Dashboard
 
 import importlib
 from iouEval import iouEval, getColorEntry
-
 from shutil import copyfile
-
 from torch.nn import CrossEntropyLoss
 # from sklearn.preprocessing import LabelEncoder
 
@@ -36,6 +34,15 @@ NUM_CLASSES = 2 #pascal=22, cityscapes=20
 
 color_transform = Colorize(NUM_CLASSES)
 image_transform = ToPILImage()
+
+# Initialize the Global para
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter("runs")
+
+plot_loss = np.array(())
+final_plot = np.array(())
+IOU_output = np.array(())
+IOU_final_plot = np.array(())
 
 #Augmentations - different function implemented to perform random augments on both image and target
 class MyCoTransform(object):
@@ -198,6 +205,8 @@ def train(args, model, enc=False):
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda1)                             ## scheduler 2
 
     if args.visualize and args.steps_plot > 0:
+    # val = True 
+    # if args.steps_plot > 0:
         board = Dashboard(args.port)
 
     for epoch in range(start_epoch, args.num_epochs+1):
@@ -253,6 +262,7 @@ def train(args, model, enc=False):
 
             #print(outputs.size())
             if args.visualize and args.steps_plot > 0 and step % args.steps_plot == 0:
+            # if args.steps_plot > 0 and step % args.steps_plot == 0:
                 start_time_plot = time.time()
                 image = inputs[0].cpu().data
                 #image[0] = image[0] * .229 + .485
@@ -273,11 +283,8 @@ def train(args, model, enc=False):
                 average = sum(epoch_loss) / len(epoch_loss)
                 print(f'loss: {average:0.4} (epoch: {epoch}, step: {step})', 
                         "// Avg time/img: %.4f s" % (sum(time_train) / len(time_train) / args.batch_size))
-
-# to plot the loss value 
-                plot_loss = np.array(average,step)
-                final_plot = np.append(final_plot,plot_loss)
-                final_plot = final_plot.reshape(-1,2)
+                # to plot the loss value 
+                writer.add_scalar('Loss/train', average, epoch)
 
         average_epoch_loss_train = sum(epoch_loss) / len(epoch_loss)
         
@@ -319,6 +326,7 @@ def train(args, model, enc=False):
                 #print ("Time to add confusion matrix: ", time.time() - start_time_iou)
 
             if args.visualize and args.steps_plot > 0 and step % args.steps_plot == 0:
+            # if args.steps_plot > 0 and step % args.steps_plot == 0:
                 start_time_plot = time.time()
                 image = inputs[0].cpu().data
                 board.image(image, f'VAL input (epoch: {epoch}, step: {step})')
@@ -335,24 +343,34 @@ def train(args, model, enc=False):
                 average = sum(epoch_loss_val) / len(epoch_loss_val)
                 print(f'VAL loss: {average:0.4} (epoch: {epoch}, step: {step})', 
                         "// Avg time/img: %.4f s" % (sum(time_val) / len(time_val) / args.batch_size))
-                       
+                #  To plot the Loss val  
+                writer.add_scalar('Loss/val', average, epoch)
 
         average_epoch_loss_val = sum(epoch_loss_val) / len(epoch_loss_val)
         #scheduler.step(average_epoch_loss_val, epoch)  ## scheduler 1   # update lr if needed
 
         iouVal = 0
-        step = 0
+        # step = 0
         if (doIouVal):
             iouVal, iou_classes = iouEvalVal.getIoU()
             iouStr = getColorEntry(iouVal)+'{:0.2f}'.format(iouVal*100) + '\033[0m'
             print ("EPOCH IoU on VAL set: ", iouStr, "%") 
 
-# To plot the IOU
-            IOU_output = np.array(iouStr,step)
-            IOU_final_plot = np.append(IOU_final_plot,IOU_output)
-            IOU_final_plot = IOU_final_plot.reshape(-1,2)                        
-            step += 1
+        # To plot the IOU
+            final_per = 0 
+            final_percent = []
+            for i in iouStr:
+            # iouStr = float(iouStr)
+                final_percent.append(i)
+            # print("Type of the ioustr", final_percent[4],final_percent[5])
+            per = np.arange(int(final_percent[4])*10, int(final_percent[4])*10+9,1)
+            for val in per:
+                if per[0] == (val-int(final_percent[5])):
+                    # print(val)
+                    final_per = val
+            writer.add_scalar('EPOCH IoU on VAL set/train',final_per,epoch)
             
+
         # remember best valIoU and save checkpoint
         if iouVal == 0:
             current_acc = -average_epoch_loss_val
@@ -449,6 +467,7 @@ def main(args):
 
         #print(torch.load(args.state))
         model = load_my_state_dict(model, torch.load(args.state))
+        
 
     """
     def weights_init(m):
@@ -501,6 +520,7 @@ def main(args):
     # print("========== TRAINING FINISHED ===========")
 
     model = train(args, model, False)
+    # print(model)
 
 if __name__ == '__main__':
     parser = ArgumentParser()

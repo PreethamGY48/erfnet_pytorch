@@ -79,7 +79,7 @@ def main():
     model = ERFNet(NUM_CLASSES)
   
     model = torch.nn.DataParallel(model)
-    if (not 'store_true'):
+    if (not'store_true'):
         model = model.cuda()
 
     #model.load_state_dict(torch.load(args.state))
@@ -111,12 +111,12 @@ def main():
     # For visualizer:
     # must launch in other window "python3.6 -m visdom.server -port 8097"
     # and access localhost:8097 to see it.
-    if ( not 'store_true'):
+    if ( not'store_true'):
         vis = visdom.Visdom()
 
     # for step, (images, labels, filename, filenameGt) in enumerate(loader):
     for step, (images, filename) in enumerate(loader):
-        if ( not 'store_true'):
+        if ( not'store_true'):
             images = images.cuda()
             #labels = labels.cuda()
 
@@ -142,7 +142,7 @@ def main():
         
 
 # Output Image Folder 
-        # filenameSave = "./crop_output/" + filename[0].split("leftImg8bit/")[1]
+        filenameSave = "./crop_output/" + filename[0].split("leftImg8bit/")[1]
         # filenameSave = "./gazebo_New_output/" + filename[0].split("leftImg8bit/")[1]
         # filenameSave = "./New_output/" + filename[0].split("leftImg8bit/")[1]
         # filenameSave = "./del_output/" + filename[0].split("leftImg8bit/")[1]            # Para 5
@@ -152,7 +152,7 @@ def main():
         # label_save.convert('L')        
         label_save.save(filenameSave) 
 
-        if ( not 'store_true'):
+        if (not'store_true'):
             vis.image(label_color.numpy())
         print (step, filenameSave)
 
