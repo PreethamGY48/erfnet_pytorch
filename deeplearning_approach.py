@@ -147,7 +147,6 @@ def image_callback(ros_image):
     draw = ImageDraw.Draw(img_wind)
     draw.rectangle((start, top, final_window[final_window_index], bottom), fill=(0, 192, 192), outline=(255, 255, 255))
     draw.rectangle((final_window[final_window_index]+robot_size, top, end , bottom), fill=(0, 192, 192), outline=(255, 255, 255))
-
     plt.imshow(np.asarray(img_wind))
     plt.show()
 
@@ -156,6 +155,38 @@ def image_callback(ros_image):
     pub_windowimg = rospy.Publisher('windowimg', im,queue_size=1)
     # print("RIGHT LANE CHANGE FLAG ON STARIGHT NOW" )
     pub_windowimg.publish(bridge.cv2_to_imgmsg(img_wind))
+
+    #  final controlcommand to move the robot 
+    window_tune = 15  
+    if  (final_window[final_window_index]+robot_size/2) < width/2 - window_tune:
+        print("Window center value is given by ", final_window[final_window_index]+robot_size/2)
+        print("Move left")
+        pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+        # print("LEFT LANE CHANGE FLAG ON STARIGHT NOW" )
+        vel_msg = Twist()
+        vel_msg.linear.x = 0.1
+        vel_msg.angular.z = 0.0
+        pub.publish(vel_msg)
+
+    elif width/2 - window_tune < (final_window[final_window_index]+robot_size/2) < width/2 + window_tune:
+    # if width/2 - window_tune < (final_window[8]+robot_size/2) < width/2 + window_tune:
+        print("Window center value is given by ", final_window[final_window_index]+robot_size/2)
+        print("Move straight")
+        pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+        vel_msg = Twist()
+        vel_msg.linear.x = 0.1
+        vel_msg.angular.z = 0.0
+        pub.publish(vel_msg)
+
+    else:
+        print("Window center value is given by ", final_window[final_window_index]+robot_size/2)
+        print("Move right") 
+        pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
+        # print("RIGHT LANE CHANGE FLAG ON SECOND RIGHT NOW" )
+        vel_msg = Twist()
+        vel_msg.linear.x = 0.0
+        vel_msg.angular.z = 0.1
+        pub.publish(vel_msg)     
 
 def main(args):
     rospy.init_node('image_converter', anonymous=True)
